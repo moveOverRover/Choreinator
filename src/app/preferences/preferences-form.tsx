@@ -19,15 +19,15 @@ export function PreferencesForm({
 }) {
   const [picks, setPicks] = useState<Picks>(initial);
   const [state, action, pending] = useActionState<PrefsState, FormData>(savePreferencesAction, {});
-  const needed = Math.min(3, Math.max(0, chores.length - 1));
-  const rankKeys = (["choice1", "choice2", "choice3"] as const).slice(0, needed);
+  const rankKeys = ["choice1", "choice2", "choice3"] as const;
+  const nothingPicked = !picks.veto && !picks.choice1 && !picks.choice2 && !picks.choice3;
 
   const set = (k: keyof Picks, v: string) => {
     setPicks((p) => {
       const next = { ...p, [k]: v };
       // A chore can only be used once: clear it from any other slot.
       for (const other of ["veto", "choice1", "choice2", "choice3"] as const) {
-        if (other !== k && next[other] === v) next[other] = "";
+        if (v && other !== k && next[other] === v) next[other] = "";
       }
       return next;
     });
@@ -48,7 +48,6 @@ export function PreferencesForm({
         value={picks[k]}
         onChange={(e) => set(k, e.target.value)}
         disabled={disabled}
-        required
       >
         <option value="">{hint}</option>
         {chores.map((c) => (
@@ -74,16 +73,31 @@ export function PreferencesForm({
         }}
         className="card space-y-4 self-start"
       >
+        <p className="text-sm text-muted">
+          Every pick is optional. Leave any of them on &quot;No preference&quot;, or leave them all blank if you
+          don&apos;t mind which chore you get.
+        </p>
         <div className="rounded-md bg-bad-bg p-3">
-          {select("veto", "🚫 The one chore I absolutely cannot do", "Choose one…")}
+          {select("veto", "🚫 The one chore I absolutely cannot do", "No preference (I can do any chore)")}
         </div>
         {rankKeys.map((k, i) =>
-          select(k, `${["🥇", "🥈", "🥉"][i]} My ${["1st", "2nd", "3rd"][i]} choice`, "Choose…"),
+          select(k, `${["🥇", "🥈", "🥉"][i]} My ${["1st", "2nd", "3rd"][i]} choice`, "No preference"),
         )}
         {!disabled && (
-          <button className="btn w-full" disabled={pending}>
-            {pending ? "Saving…" : "Save my picks"}
-          </button>
+          <div className="flex gap-2">
+            <button className="btn flex-1" disabled={pending}>
+              {pending ? "Saving…" : nothingPicked ? "Save: I don't mind" : "Save my picks"}
+            </button>
+            {!nothingPicked && (
+              <button
+                type="button"
+                className="btn-ghost"
+                onClick={() => setPicks({ veto: "", choice1: "", choice2: "", choice3: "" })}
+              >
+                Clear all
+              </button>
+            )}
+          </div>
         )}
         {state.error && <p className="text-sm text-bad">{state.error}</p>}
         {state.ok && <p className="text-sm text-good">Saved! You can change your picks until picking closes.</p>}
@@ -92,8 +106,9 @@ export function PreferencesForm({
         )}
         <p className="text-xs text-muted">
           How it works: everyone&apos;s 1st choices are handled first. If more people want a chore than it
-          has spots, winners are drawn at random. Then 2nd choices, then 3rd. Anyone left gets a random open
-          chore, but never the one they can&apos;t do.
+          has spots, winners are drawn at random. Then 2nd choices, then 3rd. A skipped choice is just skipped
+          (your 3rd choice is never moved up). Anyone left gets a random open chore, but never the one they
+          can&apos;t do.
         </p>
       </form>
 

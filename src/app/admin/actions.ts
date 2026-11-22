@@ -175,7 +175,8 @@ export async function runLotteryAction(fd: FormData) {
         id: u.email,
         name: u.name || u.email,
         veto: p?.veto || undefined,
-        choices: p ? [p.choice1, p.choice2, p.choice3].filter(Boolean) : [],
+        // Keep blanks so a skipped rank stays skipped (see runLottery).
+        choices: p ? [p.choice1, p.choice2, p.choice3] : [],
       };
     }),
     seed,

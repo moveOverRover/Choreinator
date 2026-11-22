@@ -93,7 +93,28 @@ describe("runLottery", () => {
 
   it("ignores choices equal to the veto and duplicate choices", () => {
     const r = runLottery([chore("A"), chore("B")], [person("p1", ["A", "A", "B"], "A")], "s");
-    expect(byPerson(r).p1).toMatchObject({ choreId: "B" });
+    expect(byPerson(r).p1).toMatchObject({ choreId: "B", method: "choice3" });
+  });
+
+  it("keeps a skipped rank empty instead of promoting a later choice", () => {
+    // p1 skips their 2nd choice; their 3rd choice (B) must compete in round 3, so p2
+    // (who wants B as a 2nd choice) gets it first.
+    for (let i = 0; i < 50; i++) {
+      const r = runLottery(
+        [chore("A"), chore("B"), chore("C")],
+        [person("p1", ["A", "", "B"]), person("p2", ["A", "B", ""]), person("p3", [])],
+        `gap-${i}`,
+      );
+      const m = byPerson(r);
+      const loser = m.p1.choreId === "A" ? "p2" : "p1";
+      if (loser === "p2") expect(m.p2).toMatchObject({ choreId: "B", method: "choice2" });
+      else expect(m.p1).toMatchObject({ choreId: "B", method: "choice3" });
+    }
+  });
+
+  it("treats someone with no picks at all as a leftover, with no veto", () => {
+    const r = runLottery([chore("A"), chore("B")], [person("p1", ["A"]), person("p2", ["", "", ""])], "s");
+    expect(byPerson(r).p2).toMatchObject({ choreId: "B", method: "random" });
   });
 
   it("reports people who cannot be placed when slots run out", () => {

@@ -164,14 +164,19 @@ export default async function RoundPage(props: PageProps<"/admin/rounds/[id]">) 
                 <tr key={u.email} className="border-t border-line align-top">
                   <td className="py-2 pr-2">
                     <div className="font-medium">{u.name || u.email}</div>
-                    {!p && <span className="pill bg-warn-bg">no picks</span>}
+                    {!p && <span className="pill bg-warn-bg">didn&apos;t submit</span>}
+                    {p && !p.veto && !p.choice1 && !p.choice2 && !p.choice3 && (
+                      <span className="pill bg-good-bg text-good">doesn&apos;t mind</span>
+                    )}
                   </td>
                   <td className="py-2 pr-2">{p ? name(p.veto) : ""}</td>
                   <td className="py-2 pr-2">
-                    {p && (
+                    {p && (p.choice1 || p.choice2 || p.choice3) && (
                       <ol className="list-decimal pl-4">
-                        {[p.choice1, p.choice2, p.choice3].filter(Boolean).map((c) => (
-                          <li key={c}>{name(c)}</li>
+                        {[p.choice1, p.choice2, p.choice3].map((c, i) => (
+                          <li key={i} className={c ? "" : "text-muted"}>
+                            {c ? name(c) : "no preference"}
+                          </li>
                         ))}
                       </ol>
                     )}

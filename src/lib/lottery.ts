@@ -28,7 +28,7 @@ export interface LotteryParticipant {
   name: string;
   /** Chore id this person cannot do. */
   veto?: string;
-  /** Up to 3 chore ids, best first. */
+  /** Up to 3 chore ids, best first. "" = no preference at that rank. */
   choices: string[];
 }
 
@@ -62,15 +62,17 @@ export function runLottery(
   const assignments: LotteryAssignment[] = [];
   const assigned = new Set<string>();
 
-  // Sanitize choices: drop unknown chores, duplicates, and the person's own veto.
+  // Sanitize choices: blank out unknown chores, duplicates, and the person's own veto.
+  // Positions are kept (a skipped 2nd choice stays empty) so that skipping a rank
+  // never moves a later choice into an earlier, better round.
   const cleanChoices = new Map<string, string[]>();
   for (const p of participants) {
     const seen = new Set<string>();
     const list: string[] = [];
     for (const c of p.choices.slice(0, 3)) {
-      if (!choreById.has(c) || c === p.veto || seen.has(c)) continue;
-      seen.add(c);
-      list.push(c);
+      const ok = c && choreById.has(c) && c !== p.veto && !seen.has(c);
+      if (ok) seen.add(c);
+      list.push(ok ? c : "");
     }
     cleanChoices.set(p.id, list);
   }

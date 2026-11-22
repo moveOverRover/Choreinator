@@ -48,22 +48,21 @@ export async function savePreferencesAction(_prev: PrefsState, formData: FormDat
     return valid.has(v) ? v : "";
   };
   const veto = get("veto");
-  // Normally 3 picks; fewer only if the house has fewer than 4 chores.
-  const needed = Math.min(3, Math.max(0, valid.size - 1));
-  const choices = [get("choice1"), get("choice2"), get("choice3")].slice(0, needed);
+  // Every pick is optional: blank means "no preference". Leaving everything blank is
+  // allowed too, and simply records that this person doesn't mind what they get.
+  const choices = [get("choice1"), get("choice2"), get("choice3")];
+  const picked = choices.filter(Boolean);
 
-  if (!veto) return { error: "Pick the one chore you absolutely cannot do." };
-  if (choices.some((c) => !c)) return { error: `Pick all ${needed} of your top choices.` };
-  if (new Set(choices).size !== choices.length) return { error: "Your top choices must be different chores." };
-  if (choices.includes(veto)) return { error: "Your top 3 can't include the chore you can't do." };
+  if (new Set(picked).size !== picked.length) return { error: "Your choices must be different chores." };
+  if (veto && picked.includes(veto)) return { error: "Your choices can't include the chore you can't do." };
 
   await store.savePreference({
     roundId: round.id,
     email: user.email,
     veto,
-    choice1: choices[0] ?? "",
-    choice2: choices[1] ?? "",
-    choice3: choices[2] ?? "",
+    choice1: choices[0],
+    choice2: choices[1],
+    choice3: choices[2],
     updatedAt: new Date().toISOString(),
   });
   revalidatePath("/", "layout");
