@@ -1,52 +1,57 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import Script from "next/script";
 import { useEffect, useRef, useState } from "react";
-import { googleSignInAction } from "./actions";
 
 type Gsi = {
   accounts: {
     id: {
-      initialize(opts: { client_id: string; callback: (r: { credential: string }) => void }): void;
+      initialize(opts: Record<string, unknown>): void;
       renderButton(el: HTMLElement, opts: Record<string, unknown>): void;
     };
   };
 };
 
-/** "Sign in with Google" button (Google Identity Services). */
-export function GoogleSignIn({ clientId }: { clientId: string }) {
+/** Apps whose built-in browsers break or block Google sign-in. */
+const IN_APP = /FBAN|FBAV|FB_IAB|Messenger|Instagram|Line\/|Snapchat|TikTok/i;
+
+/**
+ * "Sign in with Google" button (Google Identity Services) in redirect mode:
+ * Google sends the user back to /api/auth/google, which signs them in.
+ */
+export function GoogleSignIn({ clientId, failed }: { clientId: string; failed?: boolean }) {
   const ref = useRef<HTMLDivElement>(null);
-  const router = useRouter();
   const [loaded, setLoaded] = useState(false);
-  const [error, setError] = useState("");
-  const [busy, setBusy] = useState(false);
+  const [inApp, setInApp] = useState(false);
+
+  useEffect(() => {
+    // Detecting the browser has to happen on the client, after hydration.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setInApp(IN_APP.test(navigator.userAgent));
+  }, []);
 
   useEffect(() => {
     const google = (window as unknown as { google?: Gsi }).google;
     if (!loaded || !google || !ref.current) return;
     google.accounts.id.initialize({
       client_id: clientId,
-      callback: async ({ credential }) => {
-        setBusy(true);
-        const res = await googleSignInAction(credential);
-        if (res.error) {
-          setError(res.error);
-          setBusy(false);
-        } else {
-          router.refresh();
-        }
-      },
+      ux_mode: "redirect",
+      login_uri: `${window.location.origin}/api/auth/google`,
     });
     google.accounts.id.renderButton(ref.current, { theme: "outline", size: "large", text: "continue_with" });
-  }, [loaded, clientId, router]);
+  }, [loaded, clientId]);
 
   return (
-    <div className="flex flex-col items-center gap-2">
+    <div className="flex flex-col items-center gap-3">
+      {inApp && (
+        <p className="rounded-md bg-warn-bg p-3 text-left text-sm">
+          You opened this inside another app (like Messenger). Google sign-in may not work here. Tap the{" "}
+          <b>⋯</b> or share menu and choose <b>Open in Safari</b> / <b>Open in Chrome</b>, then sign in.
+        </p>
+      )}
       <Script src="https://accounts.google.com/gsi/client" onReady={() => setLoaded(true)} />
       <div ref={ref} className="min-h-11" />
-      {busy && <p className="text-sm text-muted">Signing you in…</p>}
-      {error && <p className="text-sm text-bad">{error}</p>}
+      {failed && <p className="text-sm text-bad">Sign-in didn&apos;t work. Please try again.</p>}
     </div>
   );
 }

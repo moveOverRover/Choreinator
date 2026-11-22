@@ -5,9 +5,9 @@ import { currentUser, devLoginEnabled } from "@/lib/auth";
 import { activeRound, assignmentFor, choreById, currentRound, METHOD_LABEL } from "@/lib/domain";
 import { readDb } from "@/lib/store";
 
-export default async function Home() {
+export default async function Home(props: PageProps<"/">) {
   const user = await currentUser();
-  if (!user) return <SignIn />;
+  if (!user) return <SignIn failed={(await props.searchParams).signin === "failed"} />;
 
   if (user.status !== "approved") {
     return (
@@ -79,7 +79,7 @@ export default async function Home() {
   );
 }
 
-function SignIn() {
+function SignIn({ failed }: { failed: boolean }) {
   const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
   return (
     <div className="card mx-auto mt-8 max-w-md space-y-6 text-center">
@@ -88,7 +88,7 @@ function SignIn() {
         <p className="text-muted">The house chore lottery. Sign in with your Google account to pick your chores.</p>
       </div>
       {clientId ? (
-        <GoogleSignIn clientId={clientId} />
+        <GoogleSignIn clientId={clientId} failed={failed} />
       ) : (
         <p className="text-sm text-bad">Google sign-in isn&apos;t set up yet (NEXT_PUBLIC_GOOGLE_CLIENT_ID).</p>
       )}
