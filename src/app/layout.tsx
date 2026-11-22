@@ -40,6 +40,9 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
           </div>
         </header>
         <main className="mx-auto w-full max-w-4xl flex-1 px-4 py-6">{children}</main>
+        <footer className="no-print py-4 text-center text-xs text-muted">
+          <Link href="/privacy" className="hover:underline">Privacy</Link>
+        </footer>
       </body>
     </html>
   );

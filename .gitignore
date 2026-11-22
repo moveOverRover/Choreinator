@@ -43,3 +43,7 @@ next-env.d.ts
 # local dev data
 /.data/
 !.env.example
+
+# service account key - never commit
+choreinator-*.json
+*service-account*.json
