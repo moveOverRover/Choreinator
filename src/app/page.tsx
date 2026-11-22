@@ -1,69 +1,105 @@
-import Image from "next/image";
+import Link from "next/link";
+import { devSignInAction } from "./actions";
+import { GoogleSignIn } from "./google-sign-in";
+import { currentUser, devLoginEnabled } from "@/lib/auth";
+import { activeRound, assignmentFor, choreById, currentRound, METHOD_LABEL } from "@/lib/domain";
+import { readDb } from "@/lib/store";
 
-export default function Home() {
+export default async function Home() {
+  const user = await currentUser();
+  if (!user) return <SignIn />;
+
+  if (user.status !== "approved") {
+    return (
+      <div className="card mx-auto max-w-md text-center">
+        <h1 className="h2">Almost there, {user.name || user.email}!</h1>
+        <p className="text-muted">
+          {user.status === "disabled"
+            ? "Your account has been turned off. Talk to a house director if this is a mistake."
+            : "A house director needs to approve your account before you can pick chores. Check back soon."}
+        </p>
+      </div>
+    );
+  }
+
+  const db = await readDb();
+  const round = currentRound(db);
+  const active = activeRound(db);
+  const mine = active && assignmentFor(db, active.id, user.email);
+  const myChore = mine && choreById(db, mine.choreId);
+  const myPref = round && db.preferences.find((p) => p.roundId === round.id && p.email === user.email);
+  const pendingCount = db.users.filter((u) => u.status === "pending").length;
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+    <div className="space-y-4">
+      <h1 className="h1">Hi {user.name.split(" ")[0] || "there"} 👋</h1>
+
+      {user.role === "admin" && pendingCount > 0 && (
+        <Link href="/admin/users" className="card block bg-warn-bg">
+          {pendingCount} {pendingCount === 1 ? "person is" : "people are"} waiting for approval →
+        </Link>
+      )}
+
+      {round?.status === "open" && (
+        <div className="card">
+          <h2 className="h2">Chore picking is open: {round.name}</h2>
+          <p className="mb-3 text-sm text-muted">
+            {myPref
+              ? "You've submitted your picks. You can change them until picking closes."
+              : "Pick the chore you can't do and rank your top 3."}
           </p>
+          <Link href="/preferences" className="btn">
+            {myPref ? "Change my picks" : "Make my picks"}
+          </Link>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+      )}
+
+      {round && (round.status === "closed" || round.status === "drawn") && (
+        <div className="card">
+          <h2 className="h2">{round.name}</h2>
+          <p className="text-sm text-muted">Picking is closed. Results will show here once they&apos;re published.</p>
         </div>
-      </main>
+      )}
+
+      <div className="card">
+        <h2 className="h2">Your chore</h2>
+        {myChore ? (
+          <>
+            <p className="text-xl font-semibold">{myChore.name}</p>
+            <p className="mb-2 text-xs text-muted">
+              {active?.name} · {METHOD_LABEL[mine!.method] ?? mine!.method}
+            </p>
+            <p className="text-sm whitespace-pre-line">{myChore.description}</p>
+          </>
+        ) : (
+          <p className="text-sm text-muted">You don&apos;t have a chore assigned yet.</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function SignIn() {
+  const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+  return (
+    <div className="card mx-auto mt-8 max-w-md space-y-6 text-center">
+      <div>
+        <h1 className="h1 mb-1">Choreinator</h1>
+        <p className="text-muted">The house chore lottery. Sign in with your Google account to pick your chores.</p>
+      </div>
+      {clientId ? (
+        <GoogleSignIn clientId={clientId} />
+      ) : (
+        <p className="text-sm text-bad">Google sign-in isn&apos;t set up yet (NEXT_PUBLIC_GOOGLE_CLIENT_ID).</p>
+      )}
+      {devLoginEnabled() && (
+        <form action={devSignInAction} className="space-y-2 border-t border-line pt-4 text-left">
+          <p className="text-xs font-semibold uppercase text-muted">Developer sign-in (local only)</p>
+          <input name="email" type="email" placeholder="email" className="field" required />
+          <input name="name" placeholder="name" className="field" />
+          <button className="btn w-full">Sign in (dev)</button>
+        </form>
+      )}
     </div>
   );
 }

@@ -1,26 +1,106 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --canvas: #f6f5f2;
+  --surface: #ffffff;
+  --ink: #1c1b19;
+  --muted: #6b6860;
+  --line: #e2dfd8;
+  --accent: #2f6f4f;
+  --accent-ink: #ffffff;
+  --good: #2f7d4a;
+  --good-bg: #e6f3ea;
+  --bad: #b3261e;
+  --bad-bg: #fbe9e7;
+  --warn-bg: #fff4d6;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --canvas: #161614;
+    --surface: #1f1f1c;
+    --ink: #ecebe6;
+    --muted: #a19e95;
+    --line: #34332f;
+    --accent: #5fb38a;
+    --accent-ink: #0d1a13;
+    --good: #7fd19b;
+    --good-bg: #183323;
+    --bad: #ff8a80;
+    --bad-bg: #3a1c1a;
+    --warn-bg: #3a3218;
   }
 }
 
+@theme inline {
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-good: var(--good);
+  --color-good-bg: var(--good-bg);
+  --color-bad: var(--bad);
+  --color-bad-bg: var(--bad-bg);
+  --color-warn-bg: var(--warn-bg);
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--canvas);
+  color: var(--ink);
+  font-family: var(--font-sans);
+}
+
+select,
+input,
+textarea {
+  background: var(--surface);
+  color: var(--ink);
+}
+
+@layer components {
+  .card {
+    @apply rounded-lg border border-line bg-surface p-4;
+  }
+  .btn {
+    @apply inline-flex items-center justify-center rounded-md bg-accent px-3 py-2 text-sm font-medium text-accent-ink hover:opacity-90 disabled:opacity-50;
+  }
+  .btn-ghost {
+    @apply inline-flex items-center justify-center rounded-md border border-line px-3 py-2 text-sm hover:bg-canvas;
+  }
+  .field {
+    @apply w-full rounded-md border border-line px-3 py-2 text-sm;
+  }
+  .label {
+    @apply mb-1 block text-sm font-medium;
+  }
+  .h1 {
+    @apply mb-4 text-2xl font-bold tracking-tight;
+  }
+  .h2 {
+    @apply mb-3 text-lg font-semibold;
+  }
+  .pill {
+    @apply inline-block rounded-full px-2 py-0.5 text-xs font-medium;
+  }
+}
+
+@media print {
+  :root {
+    --canvas: #fff;
+    --surface: #fff;
+    --ink: #000;
+    --muted: #444;
+    --line: #bbb;
+  }
+  header,
+  .no-print {
+    display: none !important;
+  }
+  body {
+    background: white;
+  }
 }

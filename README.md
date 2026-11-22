@@ -1,36 +1,81 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Choreinator
 
-## Getting Started
+The house chore lottery. Residents sign in with Google, pick the one chore they can't do, and rank their top 3. An admin runs a fair, reproducible lottery, adjusts the results if needed, and publishes them. A weekly board then shows who did their chore, based on the house's existing **Chore submission** Google Form.
 
-First, run the development server:
+All data lives in Google Sheets.
+
+## How the lottery works
+
+1. Everyone picks one chore they **can't do** and ranks their **top 3**.
+2. **Round 1:** everyone's 1st choices, starting with the most popular chore. If more people want a chore than it has slots, the winners are drawn at random. Everyone else stays in the pool.
+3. **Rounds 2 and 3:** the same process using 2nd and then 3rd choices, for people still unassigned, on chores that still have open slots.
+4. **Leftovers:** anyone left (lost every draw, or didn't submit) gets a random open chore. It is **never** their can't-do chore. The matching rearranges leftovers if that's needed to respect everyone's can't-do. If it truly can't be done, the person is shown as unassigned for an admin to fix.
+
+Each draw uses a random **seed** that is saved with the round, and the full step-by-step log is shown on the round page. The page also shows how many times an admin re-ran the lottery, so re-rolls are visible to everyone.
+
+Chores have **slots** (how many people a chore takes), so the app works for any house size up to around 100 people.
+
+## Using it (admins)
+
+1. **Admin → Chores:** check the chore list, slots, and descriptions. The list starts from the October 2026 sign-up doc. The *Form label* has to match the answer in the Google Form's "What is your chore?" question exactly.
+2. **Admin → Residents:** approve people after they first sign in, or pre-approve them by email. Untick *In the lottery* for anyone sitting out.
+3. **Admin → Rounds:** start a round. This opens picking. Share the link with the house.
+4. When picking should end, click **Close picking**, then **Run lottery**.
+5. Adjust anyone's chore with the dropdown. Changes are labeled "Set by admin" with what it was before.
+6. Click **Publish results**. Everyone sees their chore on the home page. **Printable chore cards** gives you cards to post.
+7. **Chore board:** each week shows done / missed, based on Google Form submissions. Uncheck anyone who was excused, then click **Log checked as missed**. That adds rows to the `MissedChores` tab for the treasurer.
+
+## Setup
+
+You need a Google account that will own the data. The house account is a good choice so it outlives any one resident.
+
+### 1. Google Cloud project (free)
+
+1. Go to <https://console.cloud.google.com/> and create a project, e.g. "choreinator".
+2. **APIs & Services → Library:** enable the **Google Sheets API**.
+3. **APIs & Services → OAuth consent screen:**
+   - User type: **External**.
+   - Add the app name and a support email.
+   - Scopes: the defaults only (email, profile, openid).
+   - **Publish app** so you're not limited to test users. These basic scopes don't need Google's verification.
+4. **APIs & Services → Credentials → Create credentials → OAuth client ID**, type **Web application**.
+   - Authorized JavaScript origins: `http://localhost:3123` and, later, your live URL (e.g. `https://choreinator.vercel.app`).
+   - Copy the **Client ID** into `NEXT_PUBLIC_GOOGLE_CLIENT_ID`.
+5. **IAM & Admin → Service accounts → Create service account** (no roles needed).
+   - Open it, go to **Keys → Add key → JSON**, and download the file.
+   - Put `client_email` in `GOOGLE_SERVICE_ACCOUNT_EMAIL` and `private_key` in `GOOGLE_PRIVATE_KEY`.
+   - Keep this file secret and never commit it.
+
+### 2. Spreadsheets
+
+1. Create a new, empty Google Sheet called "Choreinator DB". Share it with the service account email as **Editor**. Put its ID (the long part of the URL between `/d/` and `/edit`) in `DB_SPREADSHEET_ID`. The app creates its tabs (`Users`, `Chores`, `Rounds`, `Preferences`, `Assignments`, `LotteryLog`, `MissedChores`) the first time it runs.
+2. Share the existing **Chore submission (Responses)** sheet with the service account as **Viewer**. Put its ID in `FORM_SPREADSHEET_ID`.
+
+### 3. Run locally
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+cp .env.example .env.local   # fill in the values
+npm run dev -- -p 3123
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+To try it out without any Google setup, leave everything empty except `DEV_LOGIN=1` and `ADMIN_EMAILS=admin@example.com`. Data is then stored in `.data/db.json`, and you can sign in by typing an email. Dev login is always disabled in production builds.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npm test        # lottery + tracking unit tests
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Hosting (free)
 
-## Learn More
+The recommended option is **Vercel's free Hobby plan**: it doesn't sleep, includes HTTPS, and gives you a `something.vercel.app` address.
 
-To learn more about Next.js, take a look at the following resources:
+1. Push this folder to a **private** GitHub repo.
+2. At <https://vercel.com>, sign in with GitHub, choose **Add New → Project**, and import the repo.
+3. Add every variable from `.env.example` under **Settings → Environment Variables**. Leave out `DEV_LOGIN`. Use a new random `SESSION_SECRET`.
+4. Deploy, then add the live URL to the OAuth client's **Authorized JavaScript origins** (step 1.4).
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Data and privacy notes
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- The app stores each resident's Google email, name, and chore picks in the house's own Google Sheet. Nothing else is kept.
+- Login cookies only prove who someone is. Approval and admin status are checked against the `Users` tab on every request, so disabling someone takes effect immediately.
+- Everything is written to Sheets as plain text (`RAW`), so nothing a user types is ever run as a spreadsheet formula.
