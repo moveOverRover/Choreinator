@@ -86,7 +86,7 @@ export default async function RoundPage(props: PageProps<"/admin/rounds/[id]">) 
                   className="btn"
                   confirm={
                     round.status === "drawn"
-                      ? "Re-run the lottery? This throws away the current results and any manual edits. The re-run count is shown to everyone on this page."
+                      ? "Re-run the lottery? This throws away the current results and any manual edits. The re-run count is recorded on this page (visible to admins only)."
                       : undefined
                   }
                 >

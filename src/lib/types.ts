@@ -41,7 +41,7 @@ export interface Round {
   publishedAt: string;
   /** First day (YYYY-MM-DD) the new chores start; tracking board counts weeks from here. */
   startsOn: string;
-  /** How many times the lottery was run for this round (shown for transparency). */
+  /** How many times the lottery was run for this round (admin-only; residents never see it). */
   drawCount: number;
   /** When the "your chore" emails were last sent, and to how many people. */
   notifiedAt: string;

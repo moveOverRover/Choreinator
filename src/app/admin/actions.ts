@@ -164,7 +164,7 @@ export async function undoDrawAction(fd: FormData) {
   }
   await store.replaceAssignments(round.id, []);
   await store.replaceLog(round.id, []);
-  // drawCount is kept on purpose so re-rolls stay visible.
+  // drawCount is kept on purpose so admins can still see re-rolls.
   await store.saveRound({ ...round, status: "closed", seed: "", drawnAt: "", publishedAt: "", notifiedAt: "", notifiedCount: 0 });
   done();
 }

@@ -11,7 +11,7 @@ All data lives in Google Sheets.
 3. **Rounds 2 and 3:** the same process using 2nd and then 3rd choices, for people still unassigned, on chores that still have open slots.
 4. **Leftovers:** anyone left (lost every draw, or didn't submit) gets a random open chore. It is **never** their can't-do chore. The matching rearranges leftovers if that's needed to respect everyone's can't-do. If it truly can't be done, the person is shown as unassigned for an admin to fix.
 
-Each draw uses a random **seed** that is saved with the round, and the full step-by-step log is shown on the round page. The page also shows how many times an admin re-ran the lottery, so re-rolls are visible to everyone.
+Each draw uses a random **seed** that is saved with the round, and the full step-by-step log is shown on the round page. The page also shows how many times the lottery was re-run. The seed, the log, and the re-run count are **visible to admins only**; residents only see their own chore and the chore board.
 
 Chores have **slots** (how many people a chore takes), so the app works for any house size up to around 100 people.
 
