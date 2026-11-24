@@ -36,7 +36,9 @@ export class SheetsBackend implements TableBackend {
     });
     const data: sheets_v4_ValueRange[] = [];
     res.data.valueRanges?.forEach((vr, i) => {
-      if (!vr.values || vr.values.length === 0 || vr.values[0].length === 0) {
+      const header = vr.values?.[0] ?? [];
+      // Write the header when it's missing, or extend it when new columns were added.
+      if (header.length < schema[tabs[i]].length) {
         data.push({ range: a1(tabs[i], "A1"), values: [[...schema[tabs[i]]]] });
       }
     });

@@ -19,7 +19,7 @@ import { SheetsBackend } from "./sheets-backend";
 const SCHEMA = {
   Users: ["email", "name", "status", "role", "formName", "participates", "createdAt"],
   Chores: ["id", "name", "description", "slots", "active", "formLabel", "sortOrder"],
-  Rounds: ["id", "name", "status", "createdAt", "seed", "drawnAt", "publishedAt", "startsOn", "drawCount"],
+  Rounds: ["id", "name", "status", "createdAt", "seed", "drawnAt", "publishedAt", "startsOn", "drawCount", "notifiedAt", "notifiedCount"],
   Preferences: ["roundId", "email", "veto", "choice1", "choice2", "choice3", "updatedAt"],
   Assignments: ["roundId", "email", "choreId", "method", "note"],
   LotteryLog: ["roundId", "seq", "text"],
@@ -73,7 +73,7 @@ function parseDb(raw: Record<string, string[][]>): Db {
       }))
       .sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name)),
     rounds: rows("Rounds")
-      .map((r) => ({ ...r, status: r.status as Round["status"], drawCount: num(r.drawCount) }) as unknown as Round)
+      .map((r) => ({ ...r, status: r.status as Round["status"], drawCount: num(r.drawCount), notifiedCount: num(r.notifiedCount) }) as unknown as Round)
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
     preferences: rows("Preferences").map(
       (r) => ({ ...r, email: r.email.toLowerCase() }) as unknown as Preference,
@@ -200,6 +200,13 @@ export const store = {
       (o) => o.roundId === roundId && o.email.toLowerCase() === email.toLowerCase(),
       [],
     ),
+  /** Remove a round and everything recorded for it (picks, results, lottery log). */
+  deleteRound: async (roundId: string) => {
+    for (const tab of ["Preferences", "Assignments", "LotteryLog"] as const) {
+      await replaceWhere(tab, (o) => o.roundId === roundId, []);
+    }
+    await replaceWhere("Rounds", (o) => o.id === roundId, []);
+  },
   replaceLog: (roundId: string, lines: LogLine[]) =>
     replaceWhere("LotteryLog", (o) => o.roundId === roundId, lines),
   addMissed: async (list: MissedChore[]) => {

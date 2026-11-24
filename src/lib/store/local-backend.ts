@@ -43,6 +43,7 @@ export class LocalBackend implements TableBackend {
     await this.mutate((data) => {
       for (const [tab, headers] of Object.entries(schema)) {
         if (!data[tab] || data[tab].length === 0) data[tab] = [[...headers]];
+        else if (data[tab][0].length < headers.length) data[tab][0] = [...headers]; // new columns added
       }
     });
   }

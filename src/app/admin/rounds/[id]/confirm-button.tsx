@@ -7,16 +7,18 @@ export function ConfirmButton({
   children,
   confirm,
   className,
+  disabled,
 }: {
   children: React.ReactNode;
   confirm?: string;
   className?: string;
+  disabled?: boolean;
 }) {
   const { pending } = useFormStatus();
   return (
     <button
       className={className}
-      disabled={pending}
+      disabled={pending || disabled}
       onClick={(e) => {
         if (confirm && !window.confirm(confirm)) e.preventDefault();
       }}

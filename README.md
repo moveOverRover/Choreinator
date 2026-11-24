@@ -74,6 +74,24 @@ The recommended option is **Vercel's free Hobby plan**: it doesn't sleep, includ
 3. Add every variable from `.env.example` under **Settings → Environment Variables**. Leave out `DEV_LOGIN`. Use a new random `SESSION_SECRET`.
 4. Deploy, then add the live URL to the OAuth client's **Authorized JavaScript origins** (step 1.4).
 
+## Undoing and deleting rounds
+
+On a round's admin page:
+
+- **Undo lottery** removes the results, manual changes, and log, and puts the round back to *picking closed*. Picks are kept, so you can re-run the lottery or re-open picking. The re-run count still shows.
+- **Delete round** removes the round completely, including everyone's picks for it. To confirm, you type the round's name.
+
+## Email notifications
+
+After publishing, **📧 Email everyone their chore** sends each person their chore, its tasks, and a link to the app. The emails come from the house Google account through a free Google Apps Script (`apps-script/mailer.gs`), which allows about 1,500 emails a day on Google Workspace.
+
+One-time setup, signed in as the house account:
+
+1. Go to <https://script.google.com>, choose **New project**, and replace the code with `apps-script/mailer.gs`. Name the project "Choreinator mailer".
+2. Go to **Project Settings → Script properties → Add property**. Set the name to `SECRET` and the value to a long random string.
+3. Go to **Deploy → New deployment**. Choose the type **Web app**, set *Execute as* to **Me** and *Who has access* to **Anyone**, then click **Deploy**. Authorize it when asked.
+4. In Vercel, under **Settings → Environment Variables**, add `EMAIL_WEBHOOK_URL` (the web app URL) and `EMAIL_WEBHOOK_SECRET` (the same random string). Then redeploy.
+
 ## Data and privacy notes
 
 - The app stores each resident's Google email, name, and chore picks in the house's own Google Sheet. Nothing else is kept.

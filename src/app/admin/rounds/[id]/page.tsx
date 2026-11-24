@@ -1,7 +1,15 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { runLotteryAction, setAssignmentAction, setRoundStatusAction, updateRoundAction } from "../../actions";
+import {
+  runLotteryAction,
+  setAssignmentAction,
+  setRoundStatusAction,
+  undoDrawAction,
+  updateRoundAction,
+} from "../../actions";
 import { ConfirmButton } from "./confirm-button";
+import { DeleteRound, NotifyButton } from "./round-controls";
+import { mailIsConfigured } from "@/lib/mail";
 import { activeChores, choreById, lotteryPeople, METHOD_LABEL } from "@/lib/domain";
 import { readDb } from "@/lib/store";
 
@@ -112,7 +120,43 @@ export default async function RoundPage(props: PageProps<"/admin/rounds/[id]">) 
               </Link>
             )}
           </li>
+          {round.status === "published" && (
+            <li className="space-y-1">
+              <b>4. Tell everyone</b>
+              <NotifyButton
+                roundId={round.id}
+                count={assignments.length}
+                notifiedAt={round.notifiedAt}
+                enabled={mailIsConfigured()}
+              />
+            </li>
+          )}
         </ol>
+      </div>
+
+      <div className="card no-print space-y-3 border-bad/40">
+        <h2 className="h2 mb-0">Undo or delete</h2>
+        {drawn && (
+          <form action={undoDrawAction} className="flex flex-wrap items-center gap-2 text-sm">
+            <input type="hidden" name="roundId" value={round.id} />
+            <ConfirmButton
+              className="btn-ghost"
+              confirm="Undo the lottery? All results and manual changes are removed and the round goes back to 'picking closed'. Everyone's picks are kept."
+            >
+              ↩ Undo lottery
+            </ConfirmButton>
+            <span className="text-muted">
+              Back to how it was before the draw (picking closed, picks kept, nobody has a chore).
+            </span>
+          </form>
+        )}
+        <div className="space-y-1 text-sm">
+          <p className="text-muted">
+            Delete removes this round completely: the round, everyone&apos;s picks for it, the results, and the
+            lottery log.
+          </p>
+          <DeleteRound roundId={round.id} name={round.name} />
+        </div>
       </div>
 
       {/* Chore fill summary */}

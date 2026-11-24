@@ -43,6 +43,9 @@ export interface Round {
   startsOn: string;
   /** How many times the lottery was run for this round (shown for transparency). */
   drawCount: number;
+  /** When the "your chore" emails were last sent, and to how many people. */
+  notifiedAt: string;
+  notifiedCount: number;
 }
 
 export interface Preference {

@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { assertAdmin } from "@/lib/auth";
-import { activeChores, lotteryPeople } from "@/lib/domain";
+import { activeChores, lotteryPeople, METHOD_LABEL } from "@/lib/domain";
+import { escapeHtml, mailIsConfigured, sendMail, type Mail } from "@/lib/mail";
 import { runLottery } from "@/lib/lottery";
 import { newSeed } from "@/lib/rng";
 import { readDb, slug, store } from "@/lib/store";
@@ -117,6 +118,8 @@ export async function createRoundAction(fd: FormData) {
     publishedAt: "",
     startsOn: s(fd, "startsOn"),
     drawCount: 0,
+    notifiedAt: "",
+    notifiedCount: 0,
   };
   await store.saveRound(round);
   done();
@@ -147,6 +150,83 @@ export async function setRoundStatusAction(fd: FormData) {
     publishedAt: to === "published" ? new Date().toISOString() : round.publishedAt,
   });
   done();
+}
+
+/**
+ * Undo the lottery: remove the results and log, and put the round back to
+ * "picking closed" exactly as it was before the draw. Everyone's picks are kept.
+ */
+export async function undoDrawAction(fd: FormData) {
+  await assertAdmin();
+  const { round } = await loadRound(s(fd, "roundId"));
+  if (round.status !== "drawn" && round.status !== "published") {
+    throw new Error("The lottery hasn't been run for this round.");
+  }
+  await store.replaceAssignments(round.id, []);
+  await store.replaceLog(round.id, []);
+  // drawCount is kept on purpose so re-rolls stay visible.
+  await store.saveRound({ ...round, status: "closed", seed: "", drawnAt: "", publishedAt: "", notifiedAt: "", notifiedCount: 0 });
+  done();
+}
+
+/** Delete a round and everything recorded for it (picks, results, log). */
+export async function deleteRoundAction(fd: FormData) {
+  await assertAdmin();
+  const { round } = await loadRound(s(fd, "roundId"));
+  if (s(fd, "confirmName") !== round.name) {
+    throw new Error(`To delete, type the round name exactly: ${round.name}`);
+  }
+  await store.deleteRound(round.id);
+  done();
+  redirect("/admin/rounds");
+}
+
+export type NotifyState = { ok?: string; error?: string };
+
+/** Email everyone in a published round the chore they got. */
+export async function notifyRoundAction(_prev: NotifyState, fd: FormData): Promise<NotifyState> {
+  await assertAdmin();
+  const { db, round } = await loadRound(s(fd, "roundId"));
+  if (round.status !== "published") return { error: "Publish the results before emailing people." };
+  if (!mailIsConfigured()) return { error: "Email isn't set up yet (see README: Email notifications)." };
+
+  const appUrl = process.env.APP_URL || "https://choreinator.vercel.app";
+  const messages: Mail[] = [];
+  for (const a of db.assignments.filter((x) => x.roundId === round.id)) {
+    const u = db.users.find((x) => x.email === a.email);
+    const c = db.chores.find((x) => x.id === a.choreId);
+    if (!u || !c || u.status !== "approved") continue;
+    const first = (u.name || "there").split(/\s+/)[0];
+    const how = METHOD_LABEL[a.method]?.toLowerCase() ?? "";
+    const starts = round.startsOn ? ` New chores start ${round.startsOn}.` : "";
+    messages.push({
+      to: u.email,
+      subject: `Your chore for ${round.name}: ${c.name}`,
+      text:
+        `Hi ${first},\n\nThe chore lottery for ${round.name} is done. Your chore is: ${c.name} (${how}).${starts}\n\n` +
+        `${c.description}\n\nSee it any time at ${appUrl}\n\n- Choreinator`,
+      html:
+        `<p>Hi ${escapeHtml(first)},</p>` +
+        `<p>The chore lottery for <b>${escapeHtml(round.name)}</b> is done. Your chore is:</p>` +
+        `<p style="font-size:20px;font-weight:bold;margin:8px 0">${escapeHtml(c.name)}</p>` +
+        `<p style="color:#666;margin-top:0">${escapeHtml(how)}${escapeHtml(starts)}</p>` +
+        `<p>${escapeHtml(c.description)}</p>` +
+        `<p><a href="${escapeHtml(appUrl)}">Open Choreinator</a></p>`,
+    });
+  }
+  if (messages.length === 0) return { error: "Nobody in this round has a chore to email about." };
+
+  try {
+    const { sent, failed } = await sendMail(messages);
+    await store.saveRound({ ...round, notifiedAt: new Date().toISOString(), notifiedCount: sent });
+    done();
+    return failed.length
+      ? { error: `Sent ${sent}. Failed for: ${failed.join(", ")}` }
+      : { ok: `Emailed ${sent} ${sent === 1 ? "person" : "people"} their chore.` };
+  } catch (e) {
+    console.error("notify failed", e);
+    return { error: e instanceof Error ? e.message : "Sending failed." };
+  }
 }
 
 export async function updateRoundAction(fd: FormData) {
